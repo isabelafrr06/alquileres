@@ -2,19 +2,48 @@ import { useState } from "react"
 import {AiFillEyeInvisible, AiFillEye} from "react-icons/ai"
 import { Link } from "react-router-dom";
 import OAuth from "../components/OAuth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import {db} from "../firebase";
+import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
+    fullName: "",
     email: "",
     password: "",
   });
   const {fullName, email, password} = formData;
+  const navigate = useNavigate();
   function onChange(e){
     setFormData((prevState)=>({
       ...prevState,
       [e.target.id]: e.target.value,
     }))
+  }
+  async function onSubmit(e){
+    e.preventDefault()
+    try {
+      const auth = getAuth()
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      updateProfile(auth.currentUser, {
+        displayName: fullName
+      })
+      const user = userCredential.user;
+      //console.log(user);
+      const formDataCopy = {...formData}
+      delete formDataCopy.password
+      formDataCopy.timestamp = serverTimestamp();
+
+      await setDoc(doc(db, "users", user.uid), formDataCopy)
+      toast.success("Registro exitoso")
+      navigate("/");
+    } catch (error) {
+      //console.log(error);
+      toast.error("Error de registro")
+    }
   }
   return (
     <section>
@@ -24,7 +53,7 @@ export default function SignUp() {
           <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1073&q=80" alt="log-img" className="w-full rounded-2xl"/>
         </div>
         <div className="w-full md:w-[67%] lg-w[40%] lg:ml-20">
-          <form >
+          <form onSubmit={onSubmit}>
             <input className="w-full px-4 py-2 text-xl rounded transition ease-in-out mb-6" type="text" id="fullName" value={fullName} 
               onChange={onChange} placeholder="Nombre Completo" />
             <input className="w-full px-4 py-2 text-xl rounded transition ease-in-out mb-6" type="email" id="email" value={email} 
